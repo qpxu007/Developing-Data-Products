@@ -1,0 +1,158 @@
+Generating Random DNA Sequences
+========================================================
+author: qpxu007
+date: July 17, 2015
+autosize: false
+transition: fade
+
+Purpose and Algorithm
+========================================================
+
+DNA consists of four type of bases (A, T, C and G). Here, we will develop a R server for generating random DNA sequences. We will generate a single strand DNA of length n with a desired base composition (i.e. percentage of pA, pT, pC, pG are given by the user).
+
+We first use a uniform random number generator (runif) to generate a vector r of length n, then, for each r[i] value, we assign A, T, C, G the following scheme:
+
+![alt text](fig.png)
+
+We calculate the basic melting temperature Tm for each sequence.
+
+Implementation and Usage
+========================================================
+We developed and tested the functions (dnaseq, calTm, printDNA etc) in R first. The shiny UI app was then built on top these functions.  
+
+```{r echo=FALSE}
+dnaseq<-function(n=100, pcg=50, c2g=50, a2t=50) {
+  r<-runif(n)
+  vec <- vector()
+  
+  #pcg, c2g and a2t are percentage  
+  pcg<-pcg/100
+  c2g<-c2g/100
+  a2t<-a2t/100
+  
+  pc=pcg*c2g
+  pg=pcg*(1-c2g)
+  
+  pat=1-pcg
+  pa=pat*a2t
+  pt=pat*(1-a2t)
+  
+  #   print(pcg)
+  #   print(pa)
+  #   print(pt)
+  #   print(pc)
+  #   print(pg)
+  
+  for (i in 1:n) {
+    if (r[i] <= pa) {
+      vec[i]="A"
+    } else if (r[i] <= pa+pt & r[i] > pa) {
+      vec[i]="T"
+    } else if (r[i] <= pa+pt+pc & r[i] > pa+pt) {
+      vec[i]="C"
+    } else {
+      vec[i]="G"
+    }
+    
+  }
+  vec
+  #dnaseq=paste(vec, collapse = "")
+}
+
+
+printDNA<-function(vec) {
+  dna<-paste(vec, collapse = "")
+  dna
+}
+
+pprintDNA<-function(vec, width=60) {
+  dna<-paste(vec, collapse = "")
+  starts<-seq(1,nchar(dna),width)
+
+  dnax<-sapply(starts, function(x) { substr(dna, x, x+width)})
+  dnap<-paste(dnax, collapse = "\n")
+  cat(dnap)
+  dnap
+}
+
+plotDNA<-function(vec) {
+  barplot(table(vec), main = "Distribution of Bases", col='red', ylab="Number of Bases")
+}
+
+calTm<-function(vec) {
+  # calculate basic melting temperature for a dna sequence (in str vector)
+  len<-length(vec)
+  tbl<-table(vec)
+  a<-tbl['A']
+  t<-tbl['T']
+  c<-tbl['C']
+  g<-tbl['G']
+  
+  if (is.na(a)) {
+    a=0
+  }
+  if (is.na(c)) {
+    c=0
+  }
+  if (is.na(t)) {
+    t=0
+  }
+  if (is.na(g)) {
+    g=0
+  }
+  
+  Tm=0
+  if (len < 14) {
+    Tm=(a+t)*2+(c+g)*4
+  } else {
+    Tm=64.9 +41*(g+c-16.4)/(a+t+c+g)
+  }
+  unname(Tm)
+}
+```
+
+ - Generating DNA sequence
+
+```{r}
+dna<-dnaseq(20)
+printDNA(dna)
+```
+
+ - Calculate Tm
+
+```{r}
+print(calTm(dna))
+```
+
+
+Plotting Actual Base Distribution
+========================================================
+
+```{r}
+plotDNA(dnaseq(200,pcg=90))
+```
+
+***
+
+```{r}
+plotDNA(dnaseq(1000))
+```
+
+Deployment to the shinyapps.io Web server
+========================================================
+
+- The application is deployed to [shinyapps.io](https://qpxu007.shinyapps.io/Developing-Data-Products).
+
+  - Slider bars are used for user inputs.
+
+  - Inputs and results are displayed in real time.
+
+  - The base distribution plot can be deactivated.
+
+- User can use it to generate random DNA sequences, and explore the Tm changes with regard to GC content and length.
+
+- Compare to other servers, e.g. [knowpapa](http://knowpapa.com/random-dna/), [ucr](http://www.faculty.ucr.edu/~mmaduro/random.htm).
+
+- [Formula for calculating Tm](http://www.basic.northwestern.edu/biotools/oligocalc.html#helpbasic)
+
+- [Further reading](http://www.bioinfo.de/isb/2006060024/main.html)
